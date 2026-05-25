@@ -85,7 +85,7 @@ daily_product_velocity = 20000
 estimated_current_products = q1_products_baseline + ((days_elapsed * daily_product_velocity) / 1_000_000)
 
 st.sidebar.header("🛡️ Active Position Monitoring")
-current_premium_value = st.sidebar.number_number_input("Current Mid-Price of Short Contracts ($)", value=0.15) if hasattr(st.sidebar, 'number_number_input') else st.sidebar.number_input("Current Mid-Price of Short Contracts ($)", value=0.15, step=0.01)
+current_premium_value = st.sidebar.number_input("Current Mid-Price of Short Contracts ($)", value=0.15, step=0.01)
 initial_premium_collected = st.sidebar.number_input("Initial Premium Captured At Entry ($)", value=0.50, step=0.05)
 
 max_pain = st.number_input("🚨 Set Weekly Max Pain Strike ($)", value=np.floor(spot_price * 2)/2, step=0.50)
@@ -150,7 +150,7 @@ if bail_triggered:
     st.markdown(bail_html, unsafe_allow_html=True)
     st.warning(bail_recommendation)
 else:
-    st.success("✅ Position Health: Active positions are inside safe operational parameters.")
+    st.success("¼ Position Health: Active positions are inside safe operational parameters.")
 
 st.subheader("🚨 Real-Time Transaction Alert Execution")
 
@@ -166,3 +166,4 @@ if not bail_triggered:
     elif (spot_price <= urfp or max_pain < urfp) and theta_penalty < 0.50:
         signal_html = '<div class="flash-signal-accumulate">✨ TRANSACTION ALERT: VALUE ACCUMULATION WINDOW ACTIVE (BRIGHT EMERALD GREEN)</div>'
         trade_recommendation = f"**Action**: Buy-to-Open Call Options | **Expiration**: {target_friday_str} | **Strike**: ${target_strike_put:.2f} | **Blueprint**: Accumulate raw equity or buy calls early in the cycle. Time decay is slow."
+    elif spot_price >= upper_range * 0.98 or max_pain > urfp * 1.25:
