@@ -22,7 +22,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 st.title("⚡ SOFI Live Options Orchestration Dashboard")
-st.caption("Fully Automated Real-Time Scraping & Daily Balance Sheet Accretion Tracking")
+st.caption("100% Automated Scraping, Tracking, & Execution Workstation")
 
 @st.cache_data(ttl=60)
 def fetch_live_market_data():
@@ -89,9 +89,10 @@ q1_products_baseline = 21.80
 daily_product_velocity = 20000
 estimated_current_products = q1_products_baseline + ((days_elapsed * daily_product_velocity) / 1_000_000)
 
-st.sidebar.header("🛡️ Active Position Monitoring")
-current_premium_value = st.sidebar.number_input("Current Mid-Price of Short Contracts ($)", value=live_premium, step=0.01)
-initial_premium_collected = st.sidebar.number_input("Initial Premium Captured At Entry ($)", value=initial_premium, step=0.05)
+# SIDEBAR OVERHAUL: Converted input boxes into completely automated static monitoring metrics
+st.sidebar.header("🛡️ Live Position Monitoring")
+st.sidebar.metric("Est. Entry Premium Baseline", f"${initial_premium:.2f}")
+st.sidebar.metric("Current Live Contract Premium", f"${live_premium:.2f}")
 
 max_pain = st.number_input("🚨 Set Weekly Max Pain Strike ($)", value=np.floor(spot_price * 2)/2, step=0.50)
 
@@ -117,7 +118,7 @@ else:
     decay_profile = f"Terminal / Extreme Collapse ({dte} DTE)"
     theta_penalty = 0.95
 
-profit_percentage = ((initial_premium_collected - current_premium_value) / initial_premium_collected) * 100
+profit_percentage = ((initial_premium - live_premium) / initial_premium) * 100
 
 col1, col2, col3 = st.columns(3)
 with col1:
@@ -145,7 +146,7 @@ bail_recommendation = ""
 if profit_percentage >= 80.0 and dte >= 1:
     bail_triggered = True
     bail_html = '<div class="flash-signal-bail">💥 POSITION EXIT: TAKE PROFIT SIGNAL ACTIVE (80%+ EXTRACTED EARLY)</div>'
-    bail_recommendation = f"**Bail Action**: Secure your gains immediately. Your active options contracts have decayed by {profit_percentage:.1f}%. The exchange value stands at ${current_premium_value:.2f}. Buy-to-close now."
+    bail_recommendation = f"**Bail Action**: Secure your gains immediately. Your active options contracts have decayed by {profit_percentage:.1f}%. The exchange value stands at ${live_premium:.2f}. Buy-to-close now."
 
 if spot_price < urfp * 0.97 and not bail_triggered:
     bail_triggered = True
@@ -156,11 +157,10 @@ if bail_triggered:
     st.markdown(bail_html, unsafe_allow_html=True)
     st.warning(bail_recommendation)
 else:
-    st.success(f"✅ Position Health: Active positions are inside safe operational parameters. Live contract premium stands at ${current_premium_value:.2f}.")
+    st.success(f"✅ Position Health: Active positions are inside safe operational parameters. Live contract premium stands at ${live_premium:.2f}.")
 
 st.subheader("🚨 Real-Time Transaction Alert Execution")
 
-# Isolate execution text fields entirely from logical indentation structures
 txt_hold_signal = '<div class="normal-signal">⚪ CORE STABILITY: HOLD AND HARVEST EXISTING PREMIUM</div>'
 txt_hold_blueprint = "**Strategic Blueprint**: No operational disparities detected. Maintain your core inventory, collect natural premium erosion, and do not commit new option capital today."
 
@@ -170,3 +170,4 @@ target_strike_call = np.ceil(upper_range * 2) / 2
 txt_put_signal = '<div class="flash-signal-put-sell">🌲 TRANSACTION ALERT: ARBITRAGE PUT SELLING WINDOW ACTIVE (DARK FOREST GREEN)</div>'
 txt_put_blueprint = f"**Action**: Sell-to-Open Put Options | **Expiration**: {target_friday_str} | **Strike**: ${target_strike_put:.2f} | **Blueprint**: Write premium at Max Pain. Terminal theta decay is vaporizing extrinsic value above your verified ${urfp:.2f} floor."
 
+txt_call_buy_signal = '<div class="flash-signal-accumulate">✨ TRANSACTION ALERT: VALUE ACCUMULATION WINDOW ACTIVE (BRIGHT EMERALD GREEN)</div>'
