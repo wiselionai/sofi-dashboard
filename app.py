@@ -22,7 +22,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 st.title("⚡ SOFI Live Options Orchestration Dashboard")
-st.caption("100% Automated Market-Scraping, Daily Balance Sheet Accretion Tracking & Live Premium Tracking")
+st.caption("Fully Automated Real-Time Scraping & Daily Balance Sheet Accretion Tracking")
 
 @st.cache_data(ttl=60)
 def fetch_live_market_data():
@@ -35,7 +35,6 @@ def fetch_live_market_data():
     if days_until_friday == 0:
         days_until_friday = 7
     target_date = today + datetime.timedelta(days=days_until_friday)
-    
     try:
         url = "https://yahoo.com"
         req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
@@ -45,32 +44,27 @@ def fetch_live_market_data():
             spot_price = round(meta['regularMarketPrice'], 2)
     except:
         pass
-        
     try:
         opt_url = f"https://yahoo.com"
         req_opt = urllib.request.Request(opt_url, headers={'User-Agent': 'Mozilla/5.0'})
         with urllib.request.urlopen(req_opt, timeout=10) as response:
             opt_data = json.loads(response.read().decode())
-            res = opt_data['optionChain']['result'][0]
+            res = opt_data['optionChain']['result']
             timestamps = res['expirationDates']
             if timestamps:
                 closest_ts = [ts for ts in timestamps if ts >= datetime.datetime.combine(today, datetime.time.min).timestamp()]
                 if closest_ts:
-                    target_date = datetime.datetime.fromtimestamp(closest_ts[0]).date()
-            
-            # Auto-scrapes target strike premium directly from live option chains
-            options_block = res['options'][0]
+                    target_date = datetime.datetime.fromtimestamp(closest_ts).date()
+            options_block = res['options']
             puts = options_block['puts']
             if puts:
                 target_strike = np.floor(spot_price * 2)/2
                 matching_put = min(puts, key=lambda x: abs(x['strike'] - target_strike))
                 current_contract_premium = round(matching_put['lastPrice'], 2)
-                # Mathematical projection of Monday's baseline premium value based on current IV parameters
                 initial_contract_premium = max(current_contract_premium * 2.5, 0.40)
                 iv_val = round(matching_put['impliedVolatility'], 3)
     except:
         pass
-        
     dte = max((target_date - today).days, 0)
     return spot_price, target_date, dte, iv_val, current_contract_premium, initial_contract_premium
 
@@ -94,6 +88,10 @@ estimated_current_tbvps = q1_tbvps_baseline + (days_elapsed * daily_tbvps_veloci
 q1_products_baseline = 21.80
 daily_product_velocity = 20000
 estimated_current_products = q1_products_baseline + ((days_elapsed * daily_product_velocity) / 1_000_000)
+
+st.sidebar.header("🛡️ Active Position Monitoring")
+current_premium_value = st.sidebar.number_input("Current Mid-Price of Short Contracts ($)", value=live_premium, step=0.01)
+initial_premium_collected = st.sidebar.number_input("Initial Premium Captured At Entry ($)", value=initial_premium, step=0.05)
 
 max_pain = st.number_input("🚨 Set Weekly Max Pain Strike ($)", value=np.floor(spot_price * 2)/2, step=0.50)
 
@@ -119,7 +117,7 @@ else:
     decay_profile = f"Terminal / Extreme Collapse ({dte} DTE)"
     theta_penalty = 0.95
 
-profit_percentage = ((initial_premium - live_premium) / initial_premium) * 100
+profit_percentage = ((initial_premium_collected - current_premium_value) / initial_premium_collected) * 100
 
 col1, col2, col3 = st.columns(3)
 with col1:
@@ -147,7 +145,7 @@ bail_recommendation = ""
 if profit_percentage >= 80.0 and dte >= 1:
     bail_triggered = True
     bail_html = '<div class="flash-signal-bail">💥 POSITION EXIT: TAKE PROFIT SIGNAL ACTIVE (80%+ EXTRACTED EARLY)</div>'
-    bail_recommendation = f"**Bail Action**: Secure your gains immediately. Your active options contracts have decayed by {profit_percentage:.1f}%. The exchange value stands at ${live_premium:.2f} (Estimated Entry Base: ${initial_premium:.2f}). Buy-to-close now."
+    bail_recommendation = f"**Bail Action**: Secure your gains immediately. Your active options contracts have decayed by {profit_percentage:.1f}%. The exchange value stands at ${current_premium_value:.2f}. Buy-to-close now."
 
 if spot_price < urfp * 0.97 and not bail_triggered:
     bail_triggered = True
@@ -158,18 +156,17 @@ if bail_triggered:
     st.markdown(bail_html, unsafe_allow_html=True)
     st.warning(bail_recommendation)
 else:
-    st.success(f"✅ Position Health: Active positions are inside safe operational parameters. Live contract premium has decayed down to **${live_premium:.2f}**.")
+    st.success(f"✅ Position Health: Active positions are inside safe operational parameters. Live contract premium stands at ${current_premium_value:.2f}.")
 
 st.subheader("🚨 Real-Time Transaction Alert Execution")
 
-signal_html = '<div class="normal-signal">⚪ CORE STABILITY: HOLD AND HARVEST EXISTING PREMIUM</div>'
-trade_recommendation = "**Strategic Blueprint**: No operational disparities detected. Maintain your core inventory, collect natural premium erosion, and do not commit new option capital today."
+# Isolate execution text fields entirely from logical indentation structures
+txt_hold_signal = '<div class="normal-signal">⚪ CORE STABILITY: HOLD AND HARVEST EXISTING PREMIUM</div>'
+txt_hold_blueprint = "**Strategic Blueprint**: No operational disparities detected. Maintain your core inventory, collect natural premium erosion, and do not commit new option capital today."
 
 target_strike_put = np.floor(max_pain * 2) / 2
 target_strike_call = np.ceil(upper_range * 2) / 2
 
-if not bail_triggered and (spot_price <= urfp or max_pain < urfp) and theta_penalty >= 0.50:
-    signal_html = '<div class="flash-signal-put-sell">🌲 TRANSACTION ALERT: ARBITRAGE PUT SELLING WINDOW ACTIVE (DARK FOREST GREEN)</div>'
-    trade_recommendation = f"**Action**: Sell-to-Open Put Options | **Expiration**: {target_friday_str} | **Strike**: ${target_strike_put:.2f} | **Blueprint**: Write premium at Max Pain. Terminal theta decay is vaporizing extrinsic value above your verified ${urfp:.2f} floor."
+txt_put_signal = '<div class="flash-signal-put-sell">🌲 TRANSACTION ALERT: ARBITRAGE PUT SELLING WINDOW ACTIVE (DARK FOREST GREEN)</div>'
+txt_put_blueprint = f"**Action**: Sell-to-Open Put Options | **Expiration**: {target_friday_str} | **Strike**: ${target_strike_put:.2f} | **Blueprint**: Write premium at Max Pain. Terminal theta decay is vaporizing extrinsic value above your verified ${urfp:.2f} floor."
 
-if not bail_triggered and (spot_price <= urfp or max_pain < urfp) and theta_penalty < 0.50:
