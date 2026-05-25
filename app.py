@@ -141,7 +141,8 @@ if profit_percentage >= 80.0 and dte >= 1:
     bail_triggered = True
     bail_html = '<div class="flash-signal-bail">💥 POSITION EXIT: TAKE PROFIT SIGNAL ACTIVE (80%+ EXTRACTED EARLY)</div>'
     bail_recommendation = f"**Bail Action**: Secure your gains immediately. Your open short options have decayed by {profit_percentage:.1f}%. Buy-to-close the contracts now."
-elif spot_price < urfp * 0.97:
+
+if spot_price < urfp * 0.97 and not bail_triggered:
     bail_triggered = True
     bail_html = '<div class="flash-signal-bail">🚨 EMERGENCY EXIT: STRUCTURAL FLOOR BREAKDOWN ACTIVE</div>'
     bail_recommendation = f"**Bail Action**: The underlying spot price (${spot_price:.2f}) has breached your 3% structural buffer below the ${urfp:.2f} URFP. Buy-to-close immediately."
@@ -150,20 +151,23 @@ if bail_triggered:
     st.markdown(bail_html, unsafe_allow_html=True)
     st.warning(bail_recommendation)
 else:
-    st.success("¼ Position Health: Active positions are inside safe operational parameters.")
+    st.success("✅ Position Health: Active positions are inside safe operational parameters.")
 
 st.subheader("🚨 Real-Time Transaction Alert Execution")
 
 signal_html = '<div class="normal-signal">⚪ CORE STABILITY: HOLD AND HARVEST EXISTING PREMIUM</div>'
 trade_recommendation = "**Strategic Blueprint**: No operational disparities detected. Maintain your core inventory, collect natural premium erosion, and do not commit new option capital today."
 
-if not bail_triggered:
-    target_strike_put = np.floor(max_pain * 2) / 2
-    target_strike_call = np.ceil(upper_range * 2) / 2
-    if (spot_price <= urfp or max_pain < urfp) and theta_penalty >= 0.50:
-        signal_html = '<div class="flash-signal-put-sell">🌲 TRANSACTION ALERT: ARBITRAGE PUT SELLING WINDOW ACTIVE (DARK FOREST GREEN)</div>'
-        trade_recommendation = f"**Action**: Sell-to-Open (Write) Put Options | **Expiration**: {target_friday_str} | **Strike**: ${target_strike_put:.2f} | **Blueprint**: Write premium at Max Pain. Terminal theta decay is vaporizing extrinsic value above your verified ${urfp:.2f} floor."
-    elif (spot_price <= urfp or max_pain < urfp) and theta_penalty < 0.50:
-        signal_html = '<div class="flash-signal-accumulate">✨ TRANSACTION ALERT: VALUE ACCUMULATION WINDOW ACTIVE (BRIGHT EMERALD GREEN)</div>'
-        trade_recommendation = f"**Action**: Buy-to-Open Call Options | **Expiration**: {target_friday_str} | **Strike**: ${target_strike_put:.2f} | **Blueprint**: Accumulate raw equity or buy calls early in the cycle. Time decay is slow."
-    elif spot_price >= upper_range * 0.98 or max_pain > urfp * 1.25:
+target_strike_put = np.floor(max_pain * 2) / 2
+target_strike_call = np.ceil(upper_range * 2) / 2
+
+if not bail_triggered and (spot_price <= urfp or max_pain < urfp) and theta_penalty >= 0.50:
+    signal_html = '<div class="flash-signal-put-sell">🌲 TRANSACTION ALERT: ARBITRAGE PUT SELLING WINDOW ACTIVE (DARK FOREST GREEN)</div>'
+    trade_recommendation = f"**Action**: Sell-to-Open Put Options | **Expiration**: {target_friday_str} | **Strike**: ${target_strike_put:.2f} | **Blueprint**: Write premium at Max Pain."
+
+if not bail_triggered and (spot_price <= urfp or max_pain < urfp) and theta_penalty < 0.50:
+    signal_html = '<div class="flash-signal-accumulate">✨ TRANSACTION ALERT: VALUE ACCUMULATION WINDOW ACTIVE (BRIGHT EMERALD GREEN)</div>'
+    trade_recommendation = f"**Action**: Buy-to-Open Call Options | **Expiration**: {target_friday_str} | **Strike**: ${target_strike_put:.2f} | **Blueprint**: Accumulate raw equity or buy calls early in the cycle."
+
+if not bail_triggered and (spot_price >= upper_range * 0.98 or max_pain > urfp * 1.25):
+    signal_html = '<div class="flash-signal-sell">🔴 TRANSACTION ALERT: OVEREXTENDED PREMIUM HARVEST WINDOW ACTIVE</div>'
