@@ -53,14 +53,14 @@ def fetch_live_market_data():
         req_opt = urllib.request.Request(opt_url, headers={'User-Agent': 'Mozilla/5.0'})
         with urllib.request.urlopen(req_opt, timeout=10) as response:
             opt_data = json.loads(response.read().decode())
-            res = opt_data['optionChain']['result'][0]
+            res = opt_data['optionChain']['result']
             timestamps = res['expirationDates']
             if timestamps:
                 closest_ts = [ts for ts in timestamps if ts >= datetime.datetime.combine(today, datetime.time.min).timestamp()]
                 if closest_ts:
-                    target_date = datetime.datetime.fromtimestamp(closest_ts[0]).date()
+                    target_date = datetime.datetime.fromtimestamp(closest_ts).date()
             
-            options_block = res['options'][0]
+            options_block = res['options']
             calls = options_block['calls']
             if calls:
                 closest_call = min(calls, key=lambda x: abs(x['strike'] - spot_price))
