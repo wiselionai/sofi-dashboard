@@ -1,73 +1,40 @@
 import streamlit as st
 import numpy as np
 import datetime
-import urllib.request
-import json
 
-# --- APP CONFIG ---
+# --- CONFIG ---
 st.set_page_config(page_title="SOFI Mobile Command Engine", layout="centered")
 
-# --- DATA FETCHING ---
-@st.cache_data(ttl=600)
-def fetch_live_price():
-    try:
-        url = "https://query1.finance.yahoo.com/v8/finance/chart/SOFI?range=1d&interval=1d"
-        req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
-        with urllib.request.urlopen(req, timeout=10) as response:
-            data = json.loads(response.read().decode())
-            return round(data['chart']['result'][0]['meta']['regularMarketPrice'], 2)
-    except:
-        return 16.08
-
-spot_price = fetch_live_price()
-
-# --- FIXED GROWTH ENGINE ---
-# Q1 2026 Baselines (March 31, 2026)
+# --- PARAMETERS ---
+# Q1 2026 Baseline (March 31, 2026)
 q1_date = datetime.date(2026, 3, 31)
 days_elapsed = max((datetime.date.today() - q1_date).days, 0)
 
-# Daily Accretion Constants (Based on Q1 2026 Earnings)
-member_v = 0.011593  # Millions per day
-tbvps_v = 0.0075     # Dollars per day
-prod_v = 0.019780    # Millions per day
+# Daily Accretion Calculation
+daily_member_add = 0.011593  # Millions
+daily_prod_add = 0.019780    # Millions
+daily_tbvps_add = 0.0075     # Dollars
 
-curr_m = 14.70 + (days_elapsed * member_v)
-curr_t = 7.21 + (days_elapsed * tbvps_v)
-curr_p = 22.20 + (days_elapsed * prod_v)
+curr_m = 14.70 + (days_elapsed * daily_member_add)
+curr_p = 22.20 + (days_elapsed * daily_prod_add)
+curr_t = 7.21 + (days_elapsed * daily_tbvps_add)
 
-# URFP Calculation (Fixed Multipliers)
-urfp = np.mean([
-    curr_m * 1.00,          # Member Proxy
-    curr_t * 2.10,          # Tangible Floor
-    (curr_t * 1.55) + 4.50, # SOTP
-    (curr_p * 0.70)         # Cross-Sell Proxy
-])
+# URFP Calculation (4 Metrics)
+metric_1 = curr_m * 1.00                # Member Proxy
+metric_2 = curr_t * 2.00                # Tangible Floor
+metric_3 = (curr_t * 1.6) + 4.50        # SOTP Price
+metric_4 = (curr_p * 720) / 1000        # Cross-Sell Proxy
+
+urfp = np.mean([metric_1, metric_2, metric_3, metric_4])
 
 # --- UI ---
 st.title("🦅 SOFI Command Engine")
-st.metric("Spot Price", f"${spot_price:.2f}")
-st.metric("Calculated URFP", f"${urfp:.2f}")
+st.metric("Current URFP", f"${urfp:.2f}")
 
-st.write("---")
-st.subheader("🗓️ 4-Week Strategy Matrix")
+st.write("### Metric Breakdown")
+st.table({
+    "Metric": ["Member Proxy", "Tangible Floor", "SOTP Price", "Cross-Sell"],
+    "Value": [f"${metric_1:.2f}", f"${metric_2:.2f}", f"${metric_3:.2f}", f"${metric_4:.2f}"]
+})
 
-horizons = [
-    {"date": "May 29", "mp": 16.00},
-    {"date": "Jun 05", "mp": 16.50},
-    {"date": "Jun 12", "mp": 16.00},
-    {"date": "Jun 18", "mp": 15.00}
-]
-
-for h in horizons:
-    dev = abs(spot_price - h['mp']) / spot_price
-    if dev <= 0.038:
-        status, strat = "🟢 PINNING", f"Statistically Pinned at ${h['mp']:.2f}"
-    elif h['mp'] < urfp:
-        status, strat = "🚨 TRAPDOOR", f"Sell Puts at ${h['mp']:.2f}"
-    else:
-        status, strat = "⚪ OVEREXTENDED", "Consider Call Hedge"
-    st.markdown(f"**{h['date']}**: {status} <br> *{strat}*", unsafe_allow_html=True)
-
-if st.button("🔄 Refresh Data"):
-    st.cache_data.clear()
-    st.rerun()
+st.info(f"Days since Q1 close: {days_elapsed}")
